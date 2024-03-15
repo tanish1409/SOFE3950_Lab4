@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #define MAX_PROCESSES 1000
 #define MAX_RESOURCES 5
@@ -18,10 +17,14 @@ typedef struct {
     int cd_drives;
 } Process;
 
+typedef struct Node {
+    Process process;
+    struct Node* next;
+} Node;
+
 typedef struct {
-    Process processes[MAX_PROCESSES];
-    int front;
-    int rear;
+    Node* front;
+    Node* rear;
 } Queue;
 
 typedef struct {
@@ -50,20 +53,24 @@ void read_dispatch_list(Queue *queue) {
     }
 
     // Read the file line by line and add processes to the queue
-    while (fscanf(file, "%d, %d, %d, %d, %d, %d, %d, %d, %d",
-                  &queue->processes[queue->rear].arrival_time,
-                  &queue->processes[queue->rear].priority,
-                  &queue->processes[queue->rear].execution_time,
-                  &queue->processes[queue->rear].memory_size,
-                  &queue->processes[queue->rear].printers,
-                  &queue->processes[queue->rear].scanners,
-                  &queue->processes[queue->rear].modems,
-                  &queue->processes[queue->rear].cd_drives,
-                  &queue->processes[queue->rear].id) == 9) {
-        queue->rear++;
-        if (queue->rear >= MAX_PROCESSES) {
-            printf("Max processes reached.\n");
-            break;
+    while (!feof(file)) {
+        Process process;
+        int res = fscanf(file, "%d, %d, %d, %d, %d, %d, %d, %d, %d",
+                  &process.arrival_time,
+                  &process.priority,
+                  &process.execution_time,
+                  &process.memory_size,
+                  &process.printers,
+                  &process.scanners,
+                  &process.modems,
+                  &process.cd_drives,
+                  &process.id);
+        if (res == 9) {
+            Node* new_node = (Node*)malloc(sizeof(Node));
+            new_node->process = process;
+            new_node->next = NULL;
+            queue->rear->next = new_node;
+            queue->rear = new_node;
         }
     }
 
@@ -96,37 +103,75 @@ void release_resources(Process process) {
 }
 
 void run_FCFS(Queue *queue) {
-    // Run processes in FCFS order
-    for (int i = queue->front; i < queue->rear; i++) {
-        Process process = queue->processes[i];
+    Node* current = queue->front->next; // Skip the dummy node
+    while (current != NULL) {
+        Process process = current->process;
         if (process.priority == 0) { // Real-Time process
             execute_process(process);
             release_resources(process);
         }
+        current = current->next; // Move to the next process
     }
 }
 
 void run_User_Feedback(Queue *queue) {
-    // Implement User Feedback scheduler
-
+    Node* current = queue->front->next; // Skip the dummy node
+    while (current != NULL) {
+        Process process = current->process;
+        if (process.priority > 0 && process.priority < 4) { // User priority process
+            if (process.memory_size <= MAX_MEMORY && 
+                process.printers <= resources.printers &&
+                process.scanners <= resources.scanners &&
+                process.modems <= resources.modems &&
+                process.cd_drives <= resources.cd_drives) {
+                execute_process(process);
+                allocate_resources(process);
+            } else {
+                printf("Insufficient resources to execute process %d\n", process.id);
+            }
+        }
+        current = current->next; // Move to the next process
+    }
 }
 
 void run_Mixed(Queue *queue) {
-    // Implement Mixed scheduler
-    
+    Node* current = queue->front->next; // Skip the dummy node
+    while (current != NULL) {
+        Process process = current->process;
+        if (process.memory_size <= MAX_MEMORY && 
+            process.printers <= resources.printers &&
+            process.scanners <= resources.scanners &&
+            process.modems <= resources.modems &&
+            process.cd_drives <= resources.cd_drives) {
+            execute_process(process);
+            allocate_resources(process);
+        } else {
+            printf("Insufficient resources to execute process %d\n", process.id);
+        }
+        current = current->next; // Move to the next process
+    }
 }
 
 int main() {
     Queue queue;
-    queue.front = 0;
-    queue.rear = 0;
+    queue.front = (Node*)malloc(sizeof(Node));
+    queue.front->next = NULL;
+    queue.rear = queue.front;
 
     read_dispatch_list(&queue);
-
+    
     // Run scheduling algorithms
     run_FCFS(&queue);
     run_User_Feedback(&queue);
     run_Mixed(&queue);
+
+    // Free memory used by the queue
+    Node* current = queue.front;
+    while (current != NULL) {
+        Node* temp = current;
+        current = current->next;
+        free(temp);
+    }
 
     return 0;
 }
