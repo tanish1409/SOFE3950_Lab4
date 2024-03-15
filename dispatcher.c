@@ -103,8 +103,10 @@ void release_resources(Process process) {
 }
 
 void run_FCFS(Queue *queue) {
+    printf("f");
     Node* current = queue->front->next; // Skip the dummy node
     while (current != NULL) {
+        printf("ff");
         Process process = current->process;
         if (process.priority == 0) { // Real-Time process
             execute_process(process);
