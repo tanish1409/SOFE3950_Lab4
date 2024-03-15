@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> 
 
 #define MAX_PROCESSES 1000
 #define MAX_RESOURCES 5
@@ -52,31 +53,76 @@ void read_dispatch_list(Queue *queue) {
         return;
     }
 
+    char line[256];
     // Read the file line by line and add processes to the queue
-    while (!feof(file)) {
+    while (fgets(line, sizeof(line), file)) {
+        char *token = strtok(line, ",");
         Process process;
-        int res = fscanf(file, "%d, %d, %d, %d, %d, %d, %d, %d, %d",
-                  &process.arrival_time,
-                  &process.priority,
-                  &process.execution_time,
-                  &process.memory_size,
-                  &process.printers,
-                  &process.scanners,
-                  &process.modems,
-                  &process.cd_drives,
-                  &process.id);
-        if (res == 9) {
-            Node* new_node = (Node*)malloc(sizeof(Node));
-            new_node->process = process;
-            new_node->next = NULL;
-            queue->rear->next = new_node;
-            queue->rear = new_node;
+        int i = 0;
+        while (token != NULL && i < 9) {
+            switch (i) {
+                case 0:
+                    process.arrival_time = atoi(token);
+                    break;
+                case 1:
+                    process.priority = atoi(token);
+                    break;
+                case 2:
+                    process.execution_time = atoi(token);
+                    break;
+                case 3:
+                    process.memory_size = atoi(token);
+                    break;
+                case 4:
+                    process.printers = atoi(token);
+                    break;
+                case 5:
+                    process.scanners = atoi(token);
+                    break;
+                case 6:
+                    process.modems = atoi(token);
+                    break;
+                case 7:
+                    process.cd_drives = atoi(token);
+                    break;
+                case 8:
+                    process.id = atoi(token);
+                    break;
+            }
+            token = strtok(NULL, ",");
+            i++;
         }
+        Node* new_node = (Node*)malloc(sizeof(Node));
+        new_node->process = process;
+        new_node->next = NULL;
+        queue->rear->next = new_node;
+        queue->rear = new_node;
     }
 
     // Close the file
     fclose(file);
 }
+
+
+
+void show_dispatch_list(Queue *queue) {
+    Node* current = queue->front->next; // Skip the dummy node
+    while (current != NULL) {
+        Process process = current->process;
+        printf("Process ID: %d\n", process.id);
+        printf("Priority: %d\n", process.priority);
+        printf("Arrival Time: %d\n", process.arrival_time);
+        printf("Execution Time: %d\n", process.execution_time);
+        printf("Memory Size: %d\n", process.memory_size);
+        printf("Printers: %d\n", process.printers);
+        printf("Scanners: %d\n", process.scanners);
+        printf("Modems: %d\n", process.modems);
+        printf("CD Drives: %d\n", process.cd_drives);
+        printf("\n");
+        current = current->next; // Move to the next process
+    }
+}
+
 
 void execute_process(Process process) {
     // Simulate process execution
@@ -103,10 +149,8 @@ void release_resources(Process process) {
 }
 
 void run_FCFS(Queue *queue) {
-    printf("f");
     Node* current = queue->front->next; // Skip the dummy node
     while (current != NULL) {
-        printf("ff");
         Process process = current->process;
         if (process.priority == 0) { // Real-Time process
             execute_process(process);
@@ -161,6 +205,7 @@ int main() {
     queue.rear = queue.front;
 
     read_dispatch_list(&queue);
+    show_dispatch_list(&queue);
     
     // Run scheduling algorithms
     run_FCFS(&queue);
